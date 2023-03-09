@@ -4,9 +4,17 @@ import asyncio
 import os
 from textwrap import dedent
 from asyncio.subprocess import create_subprocess_shell
+import logging
 
 
-SIZE_KB = 300
+logging.basicConfig(
+    format=u'%(filename)s[LINE:%(lineno)d]# %(levelname)-5s [%(asctime)s]  %(message)s',
+    level=logging.DEBUG
+)
+logger = logging.getLogger('downloader')
+
+
+SIZE_KB = 100
 BYTES_IN_KB = 1024
 
 
@@ -27,6 +35,7 @@ async def archive(request):
         )
         byte = SIZE_KB * BYTES_IN_KB
         while True:
+            logger.info('Sending archive chunk ...')
             stdout = await process.stdout.read(byte)
             await response.write(stdout)
             if process.stdout.at_eof():
