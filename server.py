@@ -1,3 +1,4 @@
+import aiohttp
 from aiohttp import web
 import aiofiles
 import datetime
@@ -66,11 +67,10 @@ async def archive(request):
     original_folder = request.match_info.get('archive_hash')
     archive_path = os.path.join(os.getcwd(), 'test_photos', original_folder)
     hash_name = hashlib.md5(original_folder.encode('utf-8')).hexdigest()
-    response.headers['Content-Type'] = 'application/octet-stream'
+    # response.headers['Content-Type'] = 'application/octet-stream'
     response.headers['Content-Disposition'] = 'attachment; filename="archive.zip"'
-    response.headers['Transfer-Encoding'] = 'chunked'
-    # response.headers['Content-Type'] = 'multipart/form-data'
-
+    # response.headers['Transfer-Encoding'] = 'chunked'
+    response.headers['Content-Type'] = 'multipart/form-data'
     await response.prepare(request)
     cmd = f'zip -r - {" ".join(os.listdir(archive_path))}'
     process = await create_subprocess_shell(
@@ -82,11 +82,13 @@ async def archive(request):
     byte = 1024 * 300
     while True:
         stdout = await process.stdout.read(byte)
-        await response.write(stdout)
+        with aiohttp.MultipartWriter() as mp_writer:
+            mp_writer.append(stdout, {
+
+            })
         if process.stdout.at_eof():
             break
-
-
+    await mp_writer.write(response, close_boundary=False)
 
 
 async def handle_index_page(request):
