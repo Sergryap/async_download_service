@@ -34,13 +34,18 @@ async def archive(request):
             cwd=archive_path
         )
         byte = SIZE_KB * BYTES_IN_KB
-        while True:
-            logger.info('Sending archive chunk ...')
-            stdout = await process.stdout.read(byte)
-            await response.write(stdout)
-            if process.stdout.at_eof():
-                await response.write_eof(stdout)
-                break
+        try:
+            while True:
+                logger.info('Sending archive chunk ...')
+                await asyncio.sleep(1)
+                stdout = await process.stdout.read(byte)
+                await response.write(stdout)
+                if process.stdout.at_eof():
+                    await response.write_eof(stdout)
+                    break
+        except asyncio.CancelledError:
+            logger.warning('Download was interrupted')
+            raise
     else:
         raise web.HTTPNotFound(
             text=dedent(
