@@ -1,11 +1,11 @@
-from aiohttp import web
+import logging
 import aiofiles
 import asyncio
 import os
-from textwrap import dedent
-from asyncio.subprocess import create_subprocess_shell
-import logging
 
+from textwrap import dedent
+from asyncio.subprocess import create_subprocess_shell, create_subprocess_exec
+from aiohttp import web
 
 logging.basicConfig(
     format=u'%(filename)s[LINE:%(lineno)d]# %(levelname)-5s [%(asctime)s]  %(message)s',
@@ -18,6 +18,12 @@ SIZE_KB = 100
 BYTES_IN_KB = 1024
 
 
+async def finally_handler():
+    res = input("Ctrl-c was pressed. Do you really want to exit? y/n ")
+    if res == 'y':
+        exit(1)
+
+
 async def archive(request):
     response = web.StreamResponse()
     original_folder = request.match_info.get('archive_hash')
@@ -26,9 +32,9 @@ async def archive(request):
         response.headers['Content-Disposition'] = f'attachment; filename="archive_{original_folder}.zip"'
         response.headers['Content-Type'] = 'multipart/form-data'
         await response.prepare(request)
-        cmd = f'zip -r - {" ".join(os.listdir(archive_path))}'
-        process = await create_subprocess_shell(
-            cmd,
+        cmd = ['zip', '-r', '-', *os.listdir(archive_path)]
+        process = await create_subprocess_exec(
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             cwd=archive_path
@@ -43,8 +49,13 @@ async def archive(request):
                 if process.stdout.at_eof():
                     await response.write_eof(stdout)
                     break
+        except KeyboardInterrupt:
+            process.terminate()
+            await process.communicate()
         except asyncio.CancelledError:
             logger.warning('Download was interrupted')
+            process.terminate()
+            await process.communicate()
             raise
     else:
         raise web.HTTPNotFound(
