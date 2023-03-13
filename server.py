@@ -31,7 +31,7 @@ async def archive(request):
         )
         byte = request.app.size_kb * request.app.bytes_in_kb
         try:
-            while True:
+            while not process.stdout.at_eof():
                 if parser_args.logging:
                     logger.info('Sending archive chunk ...')
                 if parser_args.delay:
@@ -40,7 +40,6 @@ async def archive(request):
                 await response.write(stdout)
                 if process.stdout.at_eof():
                     await response.write_eof(stdout)
-                    break
         except KeyboardInterrupt:
             process.terminate()
             await process.communicate()
