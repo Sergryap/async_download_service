@@ -50,7 +50,10 @@ async def archive(request):
             await process.communicate()
             raise
         finally:
-            if process.returncode:
+            if process.returncode and parser_args.logging:
+                logger.fatal('Process failure!!!')
+                process.kill()
+            elif process.returncode:
                 process.kill()
         return
 
