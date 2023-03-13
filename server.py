@@ -18,7 +18,7 @@ async def archive(request):
     else:
         original_folder = request.match_info.get('archive_hash')
         archive_path = os.path.join(os.getcwd(), 'test_photos', original_folder)
-    if os.path.isdir(archive_path) and os.listdir(archive_path):
+    if os.path.isdir(archive_path) and os.listdir(archive_path) and original_folder:
         response.headers['Content-Disposition'] = f'attachment; filename="archive_{original_folder}.zip"'
         response.headers['Content-Type'] = 'multipart/form-data'
         await response.prepare(request)
