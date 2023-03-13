@@ -16,54 +16,50 @@ async def archive(request):
         original_folder = os.path.split(parser_args.path)[1]
         archive_path = parser_args.path
     else:
-        original_folder = request.match_info.get('archive_hash')
+        original_folder = request.match_info.get('archive_hash', '')
         archive_path = os.path.join(os.getcwd(), 'test_photos', original_folder)
-    if os.path.isdir(archive_path) and os.listdir(archive_path) and original_folder:
-        response.headers['Content-Disposition'] = f'attachment; filename="archive_{original_folder}.zip"'
-        response.headers['Content-Type'] = 'multipart/form-data'
-        await response.prepare(request)
-        cmd = ['zip', '-r', '-', *os.listdir(archive_path)]
-        process = await create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=archive_path
-        )
-        byte = request.app.size_kb * request.app.bytes_in_kb
-        try:
-            while not process.stdout.at_eof():
-                if parser_args.logging:
-                    logger.info('Sending archive chunk ...')
-                if parser_args.delay:
-                    await asyncio.sleep(parser_args.delay)
-                stdout = await process.stdout.read(byte)
-                await response.write(stdout)
-            await response.write_eof(stdout)
-        except KeyboardInterrupt:
-            process.terminate()
-            await process.communicate()
-        except asyncio.CancelledError:
-            if parser_args.logging:
-                logger.warning('Download was interrupted')
-            process.terminate()
-            await process.communicate()
-            raise
-        finally:
-            if process.returncode and parser_args.logging:
-                logger.fatal('Process failure!!!')
-                process.kill()
-            elif process.returncode:
-                process.kill()
-        return
-
-    raise web.HTTPNotFound(
-        text=dedent(
-            '''
-            404 - страница не найдена.
-            Архив не существует или был удален
-            '''
+    if not all([os.path.isdir(archive_path), os.listdir(archive_path)]):
+        raise web.HTTPNotFound(
+            text=dedent(
+                '''
+                404 - страница не найдена.
+                Архив не существует или был удален
+                '''
             )
         )
+    response.headers['Content-Disposition'] = f'attachment; filename="archive_{original_folder}.zip"'
+    response.headers['Content-Type'] = 'multipart/form-data'
+    await response.prepare(request)
+    cmd = ['zip', '-r', '-', *os.listdir(archive_path)]
+    process = await create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        cwd=archive_path
+    )
+    byte = request.app.size_kb * request.app.bytes_in_kb
+    try:
+        while not process.stdout.at_eof():
+            if parser_args.logging:
+                logger.info('Sending archive chunk ...')
+            if parser_args.delay:
+                await asyncio.sleep(parser_args.delay)
+            stdout = await process.stdout.read(byte)
+            await response.write(stdout)
+        await response.write_eof(stdout)
+    except KeyboardInterrupt:
+        process.terminate()
+    except asyncio.CancelledError:
+        if parser_args.logging:
+            logger.warning('Download was interrupted')
+        process.terminate()
+        raise
+    finally:
+        if process.returncode:
+            process.kill()
+            if parser_args.logging:
+                logger.fatal('Process failure!!!')
+        await process.communicate()
 
 
 async def handle_index_page(request):
@@ -97,6 +93,6 @@ if __name__ == '__main__':
     app.add_routes([
         web.get('/', handle_index_page),
         web.get('/archive/{archive_hash}/', archive),
-
+        web.get('/archive/', archive)
     ])
     web.run_app(app)
