@@ -9,20 +9,6 @@ from asyncio.subprocess import create_subprocess_exec
 from aiohttp import web
 
 
-parser = argparse.ArgumentParser(prog='DownloadService', description='Сервис для скачивания файлов')
-parser.add_argument('-l', '--logging', required=False, action='store_true', help='Включение логирования')
-parser.add_argument('-dl', '--delay', required=False, default=0, type=int, help='Задержка ответа при скачивании, сек')
-parser.add_argument('-p', '--path', required=False, help='Полный путь к каталогу с файлами')
-args = parser.parse_args()
-
-if args.logging:
-    logging.basicConfig(
-        format=u'%(filename)s[LINE:%(lineno)d]# %(levelname)-5s [%(asctime)s]  %(message)s',
-        level=logging.DEBUG
-    )
-    logger = logging.getLogger('downloader')
-
-
 SIZE_KB = 100
 BYTES_IN_KB = 1024
 
@@ -85,6 +71,20 @@ async def handle_index_page(request):
 
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(prog='DownloadService', description='Сервис для скачивания файлов')
+    parser.add_argument('-l', '--logging', required=False, action='store_true', help='Включение логирования')
+    parser.add_argument('-dl', '--delay', required=False, default=0, type=int,
+                        help='Задержка ответа при скачивании, сек')
+    parser.add_argument('-p', '--path', required=False, help='Полный путь к каталогу с файлами')
+    args = parser.parse_args()
+
+    if args.logging:
+        logging.basicConfig(
+            format=u'%(filename)s[LINE:%(lineno)d]# %(levelname)-5s [%(asctime)s]  %(message)s',
+            level=logging.DEBUG
+        )
+        logger = logging.getLogger('downloader')
 
     app = web.Application()
     app.add_routes([
