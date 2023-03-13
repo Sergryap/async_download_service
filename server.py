@@ -9,15 +9,12 @@ from asyncio.subprocess import create_subprocess_exec
 from aiohttp import web
 
 
-SIZE_KB = 100
-BYTES_IN_KB = 1024
-
-
 async def archive(request):
     response = web.StreamResponse()
-    if args.path:
-        original_folder = os.path.split(args.path)[1]
-        archive_path = args.path
+    parser_args = request.app.parser_args
+    if parser_args.path:
+        original_folder = os.path.split(parser_args.path)[1]
+        archive_path = parser_args.path
     else:
         original_folder = request.match_info.get('archive_hash')
         archive_path = os.path.join(os.getcwd(), 'test_photos', original_folder)
@@ -32,13 +29,13 @@ async def archive(request):
             stderr=asyncio.subprocess.PIPE,
             cwd=archive_path
         )
-        byte = SIZE_KB * BYTES_IN_KB
+        byte = request.app.size_kb * request.app.bytes_in_kb
         try:
             while True:
-                if args.logging:
+                if parser_args.logging:
                     logger.info('Sending archive chunk ...')
-                if args.delay:
-                    await asyncio.sleep(args.delay)
+                if parser_args.delay:
+                    await asyncio.sleep(parser_args.delay)
                 stdout = await process.stdout.read(byte)
                 await response.write(stdout)
                 if process.stdout.at_eof():
@@ -48,7 +45,7 @@ async def archive(request):
             process.terminate()
             await process.communicate()
         except asyncio.CancelledError:
-            if args.logging:
+            if parser_args.logging:
                 logger.warning('Download was interrupted')
             process.terminate()
             await process.communicate()
@@ -71,6 +68,8 @@ async def handle_index_page(request):
 
 
 if __name__ == '__main__':
+    SIZE_KB = 100
+    BYTES_IN_KB = 1024
 
     parser = argparse.ArgumentParser(prog='DownloadService', description='Сервис для скачивания файлов')
     parser.add_argument('-l', '--logging', required=False, action='store_true', help='Включение логирования')
@@ -87,6 +86,9 @@ if __name__ == '__main__':
         logger = logging.getLogger('downloader')
 
     app = web.Application()
+    app.parser_args = args
+    app.size_kb = SIZE_KB
+    app.bytes_in_kb = BYTES_IN_KB
     app.add_routes([
         web.get('/', handle_index_page),
         web.get('/archive/{archive_hash}/', archive),
