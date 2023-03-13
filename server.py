@@ -38,8 +38,7 @@ async def archive(request):
                     await asyncio.sleep(parser_args.delay)
                 stdout = await process.stdout.read(byte)
                 await response.write(stdout)
-                if process.stdout.at_eof():
-                    await response.write_eof(stdout)
+            await response.write_eof(stdout)
         except KeyboardInterrupt:
             process.terminate()
             await process.communicate()
