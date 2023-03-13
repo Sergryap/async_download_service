@@ -50,6 +50,9 @@ async def archive(request):
             process.terminate()
             await process.communicate()
             raise
+        finally:
+            if process.returncode:
+                process.kill()
         return
 
     raise web.HTTPNotFound(
