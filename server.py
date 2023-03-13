@@ -16,7 +16,7 @@ async def archive(request):
         original_folder = os.path.split(parser_args.path)[1]
         archive_path = parser_args.path
     else:
-        original_folder = request.match_info.get('archive_hash', '')
+        original_folder = request.match_info['archive_hash']
         archive_path = os.path.join(os.getcwd(), 'test_photos', original_folder)
     if not all([os.path.isdir(archive_path), os.listdir(archive_path)]):
         raise web.HTTPNotFound(
@@ -48,11 +48,12 @@ async def archive(request):
             await response.write(stdout)
         await response.write_eof(stdout)
     except KeyboardInterrupt:
-        process.terminate()
+        if parser_args.logging:
+            logger.warning('Download was interrupted')
+        raise
     except asyncio.CancelledError:
         if parser_args.logging:
             logger.warning('Download was interrupted')
-        process.terminate()
         raise
     finally:
         if process.returncode:
@@ -92,7 +93,6 @@ if __name__ == '__main__':
     app.bytes_in_kb = BYTES_IN_KB
     app.add_routes([
         web.get('/', handle_index_page),
-        web.get('/archive/{archive_hash}/', archive),
-        web.get('/archive/', archive)
+        web.get('/archive/{archive_hash}/', archive)
     ])
     web.run_app(app)
