@@ -50,15 +50,16 @@ async def archive(request):
             process.terminate()
             await process.communicate()
             raise
-    else:
-        raise web.HTTPNotFound(
-            text=dedent(
-                '''
-                404 - страница не найдена.
-                Архив не существует или был удален
-                '''
-                )
+        return
+
+    raise web.HTTPNotFound(
+        text=dedent(
+            '''
+            404 - страница не найдена.
+            Архив не существует или был удален
+            '''
             )
+        )
 
 
 async def handle_index_page(request):
